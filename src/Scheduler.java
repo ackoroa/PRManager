@@ -7,8 +7,30 @@ import java.util.Map;
 public class Scheduler {
 	public PCB runningProcess;
 
-	private List<List<PCB>> readyList;
 	private Map<String, RCB> resourceList;
+	private List<List<PCB>> readyList;
+
+	class RCB {
+		// status type definitions
+		public final static int FREE = 0;
+		public final static int ALLOCATED = 1;
+
+		// RCB attributes
+		private String RID;
+		private int status;
+		private List<PCB> waitingList;
+
+		public RCB(String id) {
+			RID = id;
+			status = FREE;
+			waitingList = new LinkedList<PCB>();
+		}
+
+		public String toString() {
+			return RID;
+		}
+
+	}
 
 	class PCB {
 		// status types definitions
@@ -19,26 +41,22 @@ public class Scheduler {
 		// PCB attributes
 		private String PID;
 		private List<RCB> otherResources;
-
 		private int statusType;
 		private List<PCB> statusList;
-
 		private PCB creationTreeParent;
 		private List<PCB> creationTreeChildren;
-
 		private int priority;
 
 		public PCB(String id, int pri, PCB parent) {
 			PID = id;
-			priority = pri;
-			creationTreeParent = parent;
-
 			otherResources = new LinkedList<RCB>();
 			statusType = READY;
+			statusList = readyList.get(pri);
+			creationTreeParent = parent;
 			creationTreeChildren = new LinkedList<PCB>();
+			priority = pri;
 
-			readyList.get(priority).add(this);
-			statusList = readyList.get(priority);
+			readyList.get(pri).add(this);
 		}
 
 		public void createProcess(String id, int priority) {
@@ -78,14 +96,18 @@ public class Scheduler {
 			PCB returnProcess = null;
 
 			for (PCB p : tree) {
+				// base case: if found, return
 				if (p.PID.equals(id))
 					return p;
 
+				// recursively search in child's children list
 				returnProcess = findProcess(id, p.creationTreeChildren);
 
+				// searched process found in above recursion call
 				if (returnProcess != null)
 					break;
 			}
+
 			return returnProcess;
 		}
 
@@ -111,16 +133,16 @@ public class Scheduler {
 			RCB resource = resourceList.get(RID);
 
 			otherResources.remove(resource);
-			
+
 			if (resource.waitingList.isEmpty()) {
 				resource.status = RCB.FREE;
 			} else {
 				PCB q = resource.waitingList.remove(0);
-				
+
 				q.statusType = READY;
 				readyList.get(q.priority).add(q);
 				q.statusList = readyList.get(q.priority);
-				
+
 				q.otherResources.add(resource);
 			}
 		}
@@ -134,28 +156,6 @@ public class Scheduler {
 		public String toString() {
 			return PID;
 		}
-	}
-
-	class RCB {
-		// status type definitions
-		public final static int FREE = 0;
-		public final static int ALLOCATED = 1;
-
-		// RCB attributes
-		private String RID;
-		private int status;
-		private List<PCB> waitingList;
-
-		public RCB(String id) {
-			RID = id;
-			status = FREE;
-			waitingList = new LinkedList<PCB>();
-		}
-
-		public String toString() {
-			return RID;
-		}
-
 	}
 
 	public Scheduler() {
@@ -190,21 +190,20 @@ public class Scheduler {
 
 		// if currently running process is null or
 		// its priority < p's, preempt
-		if (runningProcess == null) {
-			runningProcess = p;
-		} else if (runningProcess.priority < p.priority
-				|| runningProcess.statusType != PCB.RUNNING) {
+		if (runningProcess == null || runningProcess.priority < p.priority
+				|| runningProcess.statusType != PCB.RUNNING)
 			preempt(p, runningProcess);
-		}
 
 		// return the name of the currently running process for shell
 		return runningProcess.PID;
 	}
 
 	private void preempt(PCB p, PCB runningP) {
-		if(runningP.statusType == PCB.RUNNING)
-			runningP.statusType = PCB.READY;
-		
+		if (runningP != null) {
+			if (runningP.statusType == PCB.RUNNING)
+				runningP.statusType = PCB.READY;
+		}
+
 		p.statusType = PCB.RUNNING;
 		runningProcess = p;
 	}
