@@ -5,11 +5,12 @@ import java.util.List;
 import java.util.Map;
 
 public class Scheduler {
+	// scheduler global variables
 	public PCB runningProcess;
-
 	private Map<String, RCB> resourceList;
 	private List<List<PCB>> readyList;
 
+	// RCB class
 	class RCB {
 		// status type definitions
 		public final static int FREE = 0;
@@ -32,6 +33,7 @@ public class Scheduler {
 
 	}
 
+	// PCB class
 	class PCB {
 		// status types definitions
 		public static final int RUNNING = 1;
@@ -47,6 +49,8 @@ public class Scheduler {
 		private List<PCB> creationTreeChildren;
 		private int priority;
 
+		// PCB constructor
+		// initialise PCB and insert to ready list
 		public PCB(String id, int pri, PCB parent) {
 			PID = id;
 			otherResources = new LinkedList<RCB>();
@@ -59,11 +63,15 @@ public class Scheduler {
 			readyList.get(pri).add(this);
 		}
 
+		// creates a new process with the given id and priority
+		// the new process is a child of the creating process
 		public void createProcess(String id, int priority) {
 			PCB newProcess = new PCB(id, priority, this);
 			creationTreeChildren.add(newProcess);
 		}
 
+		// deletes the process with the given pid and
+		// all of its descendants
 		public void deleteProcess(String pid) {
 			PCB p;
 
@@ -73,11 +81,12 @@ public class Scheduler {
 			} else
 				p = findProcess(pid, creationTreeChildren);
 
-			if (p != null) {
+			if (p != null)
 				p.killProcessTree(p);
-			}
 		}
 
+		// recursive function to delete a process
+		// and all its descendants
 		private void killProcessTree(PCB p) {
 			// kill tree recursively
 			for (PCB pc : p.creationTreeChildren)
@@ -92,6 +101,8 @@ public class Scheduler {
 			p.creationTreeParent.creationTreeChildren.remove(p);
 		}
 
+		// finds a process in the given creationTree returns null if not found
+		// (cannot kill a process that is not itself or its children)
 		private PCB findProcess(String id, List<PCB> tree) {
 			PCB returnProcess = null;
 
@@ -111,17 +122,22 @@ public class Scheduler {
 			return returnProcess;
 		}
 
+		// requests a resource with id RID
 		public void requestResource(String RID) {
+			// find resource with id RID
 			RCB resource = resourceList.get(RID);
 
-			// already allocated
+			// if already allocated to self skip
 			if (otherResources.contains(resource))
 				return;
 
+			// if not yet allocated, allocate to self
 			if (resource.status == RCB.FREE) {
 				resource.status = RCB.ALLOCATED;
 				otherResources.add(resource);
-			} else {
+			}
+			// else block self and insert self to waiting list
+			else {
 				statusType = BLOCKED;
 				statusList.remove(this);
 				resource.waitingList.add(this);
@@ -129,24 +145,34 @@ public class Scheduler {
 			}
 		}
 
+		// releases a resource currently allocated to self
 		public void releaseResource(String RID) {
+			// find resource with id RID
 			RCB resource = resourceList.get(RID);
 
-			otherResources.remove(resource);
+			// proceed only if resource is actually allocated to self
+			if (otherResources.remove(resource)) {
+				// if no more process is waiting, free resource
+				if (resource.waitingList.isEmpty()) {
+					resource.status = RCB.FREE;
+				}
+				// else allocate to the process waiting
+				else {
+					// get the next resource waiting
+					PCB q = resource.waitingList.remove(0);
 
-			if (resource.waitingList.isEmpty()) {
-				resource.status = RCB.FREE;
-			} else {
-				PCB q = resource.waitingList.remove(0);
+					// unblock resource
+					q.statusType = READY;
+					readyList.get(q.priority).add(q);
+					q.statusList = readyList.get(q.priority);
 
-				q.statusType = READY;
-				readyList.get(q.priority).add(q);
-				q.statusList = readyList.get(q.priority);
-
-				q.otherResources.add(resource);
+					// allocate resource to process
+					q.otherResources.add(resource);
+				}
 			}
 		}
 
+		// times out the current process
 		public void timeout() {
 			readyList.get(priority).remove(this);
 			statusType = READY;
@@ -207,5 +233,4 @@ public class Scheduler {
 		p.statusType = PCB.RUNNING;
 		runningProcess = p;
 	}
-
 }

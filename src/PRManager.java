@@ -7,15 +7,20 @@ public class PRManager {
 	public static void main(String[] args) {
 		String currentlyRunningProcess;
 
+		// initialize process manager
 		scheduler = new Scheduler();
-
 		currentlyRunningProcess = scheduler.run();
 		outputRunningProcess(currentlyRunningProcess);
 
+		// listen to input -> run -> scheduler
 		Scanner fin = new Scanner(System.in);
-
 		while (true) {
-			processCommand(fin.nextLine());
+			String command = fin.nextLine();
+			if(command.trim().equals("")){
+				System.out.println();
+				continue;
+			}
+			processCommand(command);
 			currentlyRunningProcess = scheduler.run();
 			outputRunningProcess(currentlyRunningProcess);
 		}
@@ -23,13 +28,14 @@ public class PRManager {
 	}
 
 	private static void processCommand(String command) {
+		// break up commands
 		StringTokenizer commandTokenizer = new StringTokenizer(command);
 		String commandWord = commandTokenizer.nextToken();
 
 		switch (commandWord) {
 		case "init":
+			// reset scheduler
 			scheduler = new Scheduler();
-			System.out.println();
 			break;
 
 		case "cr":
@@ -74,5 +80,4 @@ public class PRManager {
 	private static void outputRunningProcess(String s) {
 		System.out.println(s + " is running");
 	}
-
 }
